@@ -194,6 +194,7 @@ void ledInit();
 void ledOff();
 void ledRed();
 void ledBlue();
+void ledBlueoff();
 #if defined(PCBX10)
   void ledGreen();
 #endif
@@ -294,7 +295,7 @@ uint8_t bluetoothIsWriting();
 void bluetoothDisable();
 
 #if defined(RADIO_TX16S) || defined(RADIO_F16) || defined(RADIO_V16)
-  #define BATTERY_DIVIDER 1495
+  #define BATTERY_DIVIDER 1241
 #else
   #define BATTERY_DIVIDER 1629
 #endif

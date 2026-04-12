@@ -18,7 +18,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
+#include "stm32_gpio.h"
 #include "os/sleep.h"
 #if !defined(SIMU)
 #include "stm32_ws2812.h"
@@ -1345,6 +1345,23 @@ uint8_t startOptions = 0;
 
 void edgeTxInit()
 {
+
+
+/*
+  ////////??
+  gpio_init(GPIO_PIN(GPIOG,7),GPIO_OUT,GPIO_PIN_SPEED_LOW);
+ while(1)
+  {    
+     gpio_clear(GPIO_PIN(GPIOG,7));
+     delay_ms(500);
+     gpio_set(GPIO_PIN(GPIOG,7));
+     delay_ms(500);
+  }
+  ////
+  */
+  
+  
+  
   TRACE("edgeTxInit");
 
   #if defined(COLORLCD)

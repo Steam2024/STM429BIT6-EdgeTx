@@ -113,7 +113,8 @@ void ledOff()
 void ledRed()
 {
   ledOff();
-  gpio_set(LED_RED_GPIO);
+ // gpio_set(LED_RED_GPIO);
+  gpio_clear(LED_RED_GPIO);
 }
 #endif
 
@@ -121,7 +122,8 @@ void ledRed()
 void ledGreen()
 {
   ledOff();
-  gpio_set(LED_GREEN_GPIO);
+  //gpio_set(LED_GREEN_GPIO);
+  gpio_clear(LED_GREEN_GPIO);
 }
 #endif
 
@@ -129,7 +131,15 @@ void ledGreen()
 void ledBlue()
 {
   ledOff();
+ // gpio_set(LED_BLUE_GPIO);
+  gpio_clear(LED_BLUE_GPIO);
+}
+void ledBlueoff()
+{
+  ledOff();
   gpio_set(LED_BLUE_GPIO);
+  //gpio_clear(LED_BLUE_GPIO);
+
 }
 #endif
 

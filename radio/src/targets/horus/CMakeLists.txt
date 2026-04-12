@@ -11,7 +11,7 @@ option(MODULE_SIZE_STD "Standard size TX Module" ON)
 
 set(PWR_BUTTON "PRESS" CACHE STRING "Pwr button type (PRESS/SWITCH)")
 set(CPU_TYPE STM32F4)
-set(HSE_VALUE 12000000)
+set(HSE_VALUE 25000000)
 set(STORAGE_MODELSLIST YES)
 set(HAPTIC YES)
 set(GUI_DIR colorlcd)
@@ -26,7 +26,7 @@ set(HARDWARE_EXTERNAL_MODULE YES)
 # for size report script
 set(CPU_TYPE_FULL STM32F429xI)
 set(TARGET_LINKER_DIR stm32f429_sdram)
-set(SIZE_TARGET_MEM_DEFINE "MEM_SIZE_SDRAM2=8192")
+set(SIZE_TARGET_MEM_DEFINE "MEM_SIZE_SDRAM2=16384")
 
 add_definitions(-DPCBFRSKY)
 
@@ -42,7 +42,7 @@ set(AUX_SERIAL ON)
 set(IMU ON)
 
 # Touch Screen support
-set(HARDWARE_TOUCH YES)
+set(HARDWARE_TOUCH OFF)
 
 if (PCB STREQUAL X10)
   set(PCBREV "STD" CACHE STRING "PCB Revision")
@@ -97,7 +97,7 @@ if (PCB STREQUAL X10)
     set(DEFAULT_INTERNAL_MODULE MULTIMODULE CACHE STRING "Default internal module")
     option(BLUETOOTH "Support for bluetooth module" OFF)
     set(SWSERIALPOWER YES)
-    set(USB_CHARGER YES)
+    set(USB_CHARGER OFF)
     add_definitions(-DMANUFACTURER_RADIOMASTER)
     if (NOT BLUETOOTH)
       set(AUX2_SERIAL ON)

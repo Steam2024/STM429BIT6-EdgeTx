@@ -31,6 +31,30 @@
 #include "lcd.h"
 #include "lcd_driver.h"
 
+
+
+
+
+#define RST_H()             gpio_set(LCD_NRST_GPIO);
+#define CS_H()              gpio_set(GPIO_PIN(GPIOC, 13));
+#define SCK_H()             gpio_set(GPIO_PIN(GPIOA, 15));
+#define MOSI_H()            gpio_set(GPIO_PIN(GPIOB, 2));
+// 设置引脚为低电平 (RESET)
+// 相当于直接操作 BSRR 寄存器的高 16 位 (BR)
+#define RST_L()             gpio_clear(LCD_NRST_GPIO);
+#define CS_L()              gpio_clear(GPIO_PIN(GPIOC, 13));
+#define SCK_L()             gpio_clear(GPIO_PIN(GPIOA, 15));
+#define MOSI_L()            gpio_clear(GPIO_PIN(GPIOB, 2));
+
+
+
+
+
+
+
+
+
+
 uint8_t TouchControllerType = 0;  //0:cst340; 1 ft6236
 static volatile uint16_t lcd_phys_w = LCD_PHYS_W;
 static volatile uint16_t lcd_phys_h = LCD_PHYS_H;
@@ -104,7 +128,7 @@ static void LCD_AF_GPIOConfig(void)
    */
 
   // GPIOG configuration
-  gpio_init_af(GPIO_PIN(GPIOG, 7), GPIO_AF_LTDC, GPIO_PIN_SPEED_LOW);
+  gpio_init_af(GPIO_PIN(GPIOI, 14), GPIO_AF_LTDC, GPIO_PIN_SPEED_LOW);
 
   // GPIOI configuration
   gpio_init_af(GPIO_PIN(GPIOI, 12), GPIO_AF_LTDC, GPIO_PIN_SPEED_LOW);
@@ -138,6 +162,16 @@ static void lcdSpiConfig(void)
   gpio_init(LCD_SPI_MOSI_GPIO, GPIO_OUT, GPIO_PIN_SPEED_LOW);
   gpio_init(LCD_SPI_CS_GPIO, GPIO_OUT, GPIO_PIN_SPEED_LOW);
   gpio_init(LCD_NRST_GPIO, GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  
+  
+  
+  gpio_init(GPIO_PIN(GPIOB, 2), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  gpio_init(GPIO_PIN(GPIOA, 15), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  gpio_init(GPIO_PIN(GPIOC, 13), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  
+  
+  
+  
 
   /* Set the chip select pin aways low */
   CLR_LCD_CS();
@@ -757,7 +791,7 @@ void LCD_ILI9481_Off(void) {
 
 unsigned int LCD_ILI9481_ReadID(void) {
 #if 1
-  /* Have a issue here */
+ // Have a issue here 
   return 0;
 #else
   int ID = 0;
@@ -2704,6 +2738,374 @@ void LCD_NT35310_Off( void )
     lcdWriteCommand( 0x28 );
 }
 
+
+
+
+/*
+//  ST7701S------
+static void LCD_Software_SPI_Transmit(uint8_t data)
+{
+    uint8_t n;
+    
+    // 原始代码中的时序是：SCK=0 (低电平) -> MOSI=data bit -> SCK=1 (高电平)
+    // 这与标准 SPI 模式 1 (CPOL=0, CPHA=1) 吻合。
+
+    for(n = 0; n < 8; n++)
+    {       
+        // 1. SCK 拉低 (时钟空闲状态)
+              
+        // 2. 设置数据线 (在时钟上升沿之前设置数据 - CPHA=1)
+        if (data & 0x80)
+        {
+            MOSI_H();
+        }
+        else
+        {
+            MOSI_L();
+        }
+        
+            
+        // 3. SCK 拉高 (数据在下降沿被采样)
+       
+        data <<= 1;
+          SCK_L();
+          SCK_H();
+              
+    }
+}
+
+
+
+
+
+// 原始代码中对 SPI_DI 的操作被替换为对 DC/A0 引脚的操作。
+// * @brief 发送命令
+ //* @param i 要发送的8位命令
+ 
+void SPI_WriteComm(uint8_t i)
+{
+    CS_L();
+    
+    // 原 8051 代码中 SPI_DI=0 是命令标志，这里使用 DC/A0 引脚拉低
+    MOSI_L();
+
+    SCK_L();
+    SCK_H();
+    // 原 8051 代码中额外的 SCK 翻转被省略，因为它被 DC/A0 引脚替代
+    
+    LCD_Software_SPI_Transmit(i);
+        
+    CS_H();
+}
+
+
+
+
+ // @brief 发送数据
+ //@param i 要发送的8位数据
+ 
+void SPI_WriteData(uint8_t i)
+{ 
+    CS_L();
+    
+    // 原 8051 代码中 SPI_DI=1 是数据标志，这里使用 DC/A0 引脚拉高
+      MOSI_H();
+     SCK_L();
+    SCK_H();
+    // 原 8051 代码中额外的 SCK 翻转被省略
+    
+    LCD_Software_SPI_Transmit(i);
+        
+    CS_H();
+}
+
+
+
+
+//  @brief ST7701S 液晶屏初始化序列
+ 
+void ST7701S_Initial(void)
+{
+    // 请确保您的 GPIO 初始化 (MX_GPIO_Init) 已经将所有控制引脚配置为输出!
+     CS_L();
+
+    RST_H();
+    delay_ms(100);
+    RST_L();
+    delay_ms(800);
+    RST_H();
+    delay_ms(800);  
+
+    // 初始化序列（与原始代码完全一致）
+SPI_WriteComm(0xFF);
+SPI_WriteData(0x77);
+SPI_WriteData(0x01);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x10);
+
+SPI_WriteComm(0xC0);
+SPI_WriteData(0xE9);
+SPI_WriteData(0x03);
+
+SPI_WriteComm(0xC1);
+SPI_WriteData(0x11);
+SPI_WriteData(0x02);
+
+SPI_WriteComm(0xC2);
+SPI_WriteData(0x31);
+SPI_WriteData(0x08);
+
+SPI_WriteComm(0xCC);
+SPI_WriteData(0x10);
+//------------------------------------Gamma Cluster Setting------------------------------------------//
+SPI_WriteComm(0xB0);
+SPI_WriteData(0x00);
+SPI_WriteData(0x05);
+SPI_WriteData(0x0F);
+SPI_WriteData(0x0D);
+SPI_WriteData(0x13);
+SPI_WriteData(0x07);
+SPI_WriteData(0x01);
+SPI_WriteData(0x08);
+SPI_WriteData(0x09);
+SPI_WriteData(0x1E);
+SPI_WriteData(0x05);
+SPI_WriteData(0x12);
+SPI_WriteData(0x10);
+SPI_WriteData(0xA7);
+SPI_WriteData(0x2F);
+SPI_WriteData(0x18);
+
+SPI_WriteComm(0xB1);
+SPI_WriteData(0x00);
+SPI_WriteData(0x0F);
+SPI_WriteData(0x17);
+SPI_WriteData(0x0C);
+SPI_WriteData(0x0D);
+SPI_WriteData(0x05);
+SPI_WriteData(0x01);
+SPI_WriteData(0x08);
+SPI_WriteData(0x08);
+SPI_WriteData(0x1E);
+SPI_WriteData(0x05);
+SPI_WriteData(0x13);
+SPI_WriteData(0x11);
+SPI_WriteData(0xA7);
+SPI_WriteData(0x2F);
+SPI_WriteData(0x18);
+//--------------------------------------End Gamma Setting---------------------------------------------//
+//-----------------------------------End Display Control setting---------------------------------------//
+//----------------------------------------Bank0 Setting End--------------------------------------------//
+//-----------------------------------------Bank1 Setting-------------------------------------------------//
+//------------------------------- Power Control Registers Initial -------------------------------------//
+SPI_WriteComm(0xFF);
+SPI_WriteData(0x77);
+SPI_WriteData(0x01);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x11);
+
+SPI_WriteComm(0xB0);
+SPI_WriteData(0x4D);
+//-----------------------------------------Vcom Setting-------------------------------------------------//
+SPI_WriteComm(0xB1);
+SPI_WriteData(0x4F);
+//---------------------------------------End Vcom Setting---------------------------------------------//
+SPI_WriteComm(0xB2);
+SPI_WriteData(0x07);
+
+SPI_WriteComm(0xB3);
+SPI_WriteData(0x80);
+
+SPI_WriteComm(0xB5);
+SPI_WriteData(0x47);
+
+SPI_WriteComm(0xB7);
+SPI_WriteData(0x85);
+
+SPI_WriteComm(0xB8);
+SPI_WriteData(0x21);
+
+SPI_WriteComm(0xB9);
+SPI_WriteData(0x10);
+
+SPI_WriteComm(0xC1);
+SPI_WriteData(0x78);
+
+SPI_WriteComm(0xC2);
+SPI_WriteData(0x78);
+
+SPI_WriteComm(0xD0);
+SPI_WriteData(0x88);
+//---------------------------------End Power Control Registers Initial -------------------------------//
+delay_ms(100);
+//-------------------------------------------GIP Setting--------------------------------------------------//
+SPI_WriteComm(0xE0);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x02);
+
+SPI_WriteComm(0xE1);
+SPI_WriteData(0x08);
+SPI_WriteData(0x00);
+SPI_WriteData(0x0A);
+SPI_WriteData(0x00);
+SPI_WriteData(0x07);
+SPI_WriteData(0x00);
+SPI_WriteData(0x09);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x33);
+SPI_WriteData(0x33);
+
+SPI_WriteComm(0xE2);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+
+SPI_WriteComm(0xE3);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x33);
+SPI_WriteData(0x33);
+
+SPI_WriteComm(0xE4);
+SPI_WriteData(0x44);
+SPI_WriteData(0x44);
+
+SPI_WriteComm(0xE5);
+SPI_WriteData(0x0E);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x10);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x0A);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x0C);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+
+SPI_WriteComm(0xE6);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x33);
+SPI_WriteData(0x33);
+
+SPI_WriteComm(0xE7);
+SPI_WriteData(0x44);
+SPI_WriteData(0x44);
+
+SPI_WriteComm(0xE8);
+SPI_WriteData(0x0D);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x0F);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x09);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+SPI_WriteData(0x0B);
+SPI_WriteData(0x60);
+SPI_WriteData(0xA0);
+SPI_WriteData(0xA0);
+
+SPI_WriteComm(0xEB);
+SPI_WriteData(0x02);
+SPI_WriteData(0x01);
+SPI_WriteData(0xE4);
+SPI_WriteData(0xE4);
+SPI_WriteData(0x44);
+SPI_WriteData(0x00);
+SPI_WriteData(0x40);
+
+SPI_WriteComm(0xEC);
+SPI_WriteData(0x02);
+SPI_WriteData(0x01);
+
+SPI_WriteComm(0xED);
+SPI_WriteData(0xAB);
+SPI_WriteData(0x89);
+SPI_WriteData(0x76);
+SPI_WriteData(0x54);
+SPI_WriteData(0x01);
+SPI_WriteData(0xFF);
+SPI_WriteData(0xFF);
+SPI_WriteData(0xFF);
+SPI_WriteData(0xFF);
+SPI_WriteData(0xFF);
+SPI_WriteData(0xFF);
+SPI_WriteData(0x10);
+SPI_WriteData(0x45);
+SPI_WriteData(0x67);
+SPI_WriteData(0x98);
+SPI_WriteData(0xBA);
+
+SPI_WriteComm(0xEF);
+SPI_WriteData(0x04);
+SPI_WriteData(0x04);
+SPI_WriteData(0x04);
+SPI_WriteData(0x07);
+SPI_WriteData(0x0F);
+//-------------------------------------------End GIP Setting---------------------------------------------//
+//----------------------------- Power Control Registers Initial End----------------------------------//
+//----------------------------------------Bank1 Setting--------------------------------------------------//
+SPI_WriteComm(0xFF);
+SPI_WriteData(0x77);
+SPI_WriteData(0x01);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteData(0x00);
+SPI_WriteComm(0x3A);    //RGB, 101=16bit
+SPI_WriteData(0x55);
+//
+SPI_WriteComm(0x36);
+SPI_WriteData(0x00);
+
+
+//
+
+
+
+SPI_WriteComm(0x11);SPI_WriteData(0x00);                 // Sleep-Out
+delay_ms(120);                          
+SPI_WriteComm(0x29);SPI_WriteData(0x00);// Display On
+delay_ms(120);
+}
+
+
+
+
+
+*/
+
+
+
+
+
+
+
+
 void LCD_Init_LTDC() {
   __HAL_RCC_LTDC_CLK_ENABLE();
   hltdc.Instance = LTDC;
@@ -2716,10 +3118,10 @@ void LCD_Init_LTDC() {
   uint32_t clock = (lcdPixelClock*16) / 1000000; // clock*16 in MHz
   RCC_PeriphCLKInitTypeDef clkConfig;
   clkConfig.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-  clkConfig.PLLSAI.PLLSAIN = clock;
-  clkConfig.PLLSAI.PLLSAIR = 4;
+  clkConfig.PLLSAI.PLLSAIN = 432;
+  clkConfig.PLLSAI.PLLSAIR = 3;
   clkConfig.PLLSAIDivQ = 6;
-  clkConfig.PLLSAIDivR = RCC_PLLSAIDIVR_4;
+  clkConfig.PLLSAIDivR = RCC_PLLSAIDIVR_8;
   HAL_RCCEx_PeriphCLKConfig(&clkConfig);
 
   /* LTDC Configuration *********************************************************/
@@ -2731,7 +3133,7 @@ void LCD_Init_LTDC() {
   /* Initialize the data enable polarity as active low */
   hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AL;
   /* Initialize the pixel clock polarity as input pixel clock */
-  hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IIPC;
+  hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
 
   /* Configure R,G,B component values for LCD background color */
   hltdc.Init.Backcolor.Red = 0;

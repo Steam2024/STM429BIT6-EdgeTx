@@ -43,15 +43,32 @@
   #define HFP  8
   #define VFP  8
 #else
-  #define HBP  42
-  #define VBP  12
+  #define HBP  60
+  #define VBP  4
 
-  #define HSW  2
-  #define VSW  10
+  #define HSW  5
+  #define VSW  3
 
-  #define HFP  3
-  #define VFP  2
+  #define HFP  5
+  #define VFP  20
 #endif
+
+
+
+
+#define RST_H()             gpio_set(LCD_GPIO_NRST);
+#define CS_H()              gpio_set(GPIO_PIN(GPIOC, 13));
+#define SCK_H()             gpio_set(GPIO_PIN(GPIOA, 15));
+#define MOSI_H()            gpio_set(GPIO_PIN(GPIOB, 2));
+// 设置引脚为低电平 (RESET)
+// 相当于直接操作 BSRR 寄存器的高 16 位 (BR)
+#define RST_L()             gpio_clear(LCD_GPIO_NRST);
+#define CS_L()              gpio_clear(GPIO_PIN(GPIOC, 13));
+#define SCK_L()             gpio_clear(GPIO_PIN(GPIOA, 15));
+#define MOSI_L()            gpio_clear(GPIO_PIN(GPIOB, 2));
+
+
+
 
 #define GPIO_AF_LTDC GPIO_AF14
 
@@ -253,6 +270,11 @@ static void LCD_AF_GPIOConfig()
 static void LCD_NRSTConfig(void)
 {
   gpio_init(LCD_GPIO_NRST, GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  
+  gpio_init(GPIO_PIN(GPIOB, 2), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  gpio_init(GPIO_PIN(GPIOA, 15), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  gpio_init(GPIO_PIN(GPIOC, 13), GPIO_OUT, GPIO_PIN_SPEED_LOW);
+  
 }
 
 static void lcdReset(void)
@@ -286,7 +308,8 @@ void LCD_Init_LTDC()
   //third pam is for LCD
   RCC_PeriphCLKInitTypeDef clkConfig;
   clkConfig.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-  clkConfig.PLLSAI.PLLSAIN = 192;
+     clkConfig.PLLSAI.PLLSAIN = 256;
+   // clkConfig.PLLSAI.PLLSAIN = 192;
   clkConfig.PLLSAI.PLLSAIR = 3;
   clkConfig.PLLSAIDivQ = 6;
   #if defined(RADIO_TX16S) || defined(RADIO_F16)
@@ -404,12 +427,335 @@ void lcdSetInitalFrameBuffer(void* fbAddress)
   initialFrameBuffer = fbAddress;
 }
 
+
+
+
+
+
+
+
+
+
+// ST7701S------ ??
+ // 原始代码中的时序是：SCK=0 (低电平) -> MOSI=data bit -> SCK=1 (高电平)
+ // 这与标准 SPI 模式 1 (CPOL=0, CPHA=1) 吻合。
+ // 1. SCK 拉低 (时钟空闲状态)
+ // 2. 设置数据线 (在时钟上升沿之前设置数据 - CPHA=1)
+static void LCD_Software_SPI_Transmit(uint8_t data)
+{
+    uint8_t n;
+    for(n = 0; n < 8; n++)
+    {            
+        if (data & 0x80)
+        {
+            MOSI_H();
+        }
+        else
+        {
+            MOSI_L();
+        }               
+        data <<= 1;
+          SCK_L();
+          SCK_H();              
+        }}
+ // @brief 发送命令
+ // @param i 要发送的8位命令
+ void SPI_WriteComm(uint8_t i)
+{
+    CS_L();
+    
+    // 原 8051 代码中 SPI_DI=0 是命令标志，这里使用 DC/A0 引脚拉低
+    MOSI_L();
+
+    SCK_L();
+    SCK_H();
+    // 原 8051 代码中额外的 SCK 翻转被省略，因为它被 DC/A0 引脚替代
+    
+    LCD_Software_SPI_Transmit(i);
+        
+    CS_H();
+}
+//  @brief 发送数据
+// @param i 要发送的8位数据 
+void SPI_WriteData(uint8_t i)
+{ 
+    CS_L();
+    MOSI_H();
+     SCK_L();
+    SCK_H();
+    LCD_Software_SPI_Transmit(i);
+    CS_H();
+}
+//  @brief ST7701S 液晶屏初始化序列
+ 
+void ST7701S_Initial(void)
+{
+    // 请确保您的 GPIO 初始化 (MX_GPIO_Init) 已经将所有控制引脚配置为输出!
+     CS_L();
+
+    RST_H();
+    delay_ms(10);
+    RST_L();
+    delay_ms(100);
+    RST_H();
+    delay_ms(100);  
+    // 初始化序列（与原始代码完全一致）
+    SPI_WriteComm(0x11);
+	delay_ms(120);
+	
+	SPI_WriteComm(0xFF);
+	SPI_WriteData(0x77);
+	SPI_WriteData(0x01);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x10);
+	
+	
+	SPI_WriteComm(0xC0);
+	SPI_WriteData(0x4F);
+	SPI_WriteData(0x00);
+	
+	
+	SPI_WriteComm(0xC1);
+	SPI_WriteData(0x07);
+	SPI_WriteData(0x02);
+	
+	
+	SPI_WriteComm(0xC2);
+	SPI_WriteData(0x31);
+	SPI_WriteData(0x05);
+	
+	SPI_WriteComm(0xC3);
+	SPI_WriteData(0x80);
+	SPI_WriteData(0x02);
+	SPI_WriteData(0x07);	
+
+  
+
+
+	SPI_WriteComm(0xCC);
+	SPI_WriteData(0x10);	
+	
+	SPI_WriteComm(0xB0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x0A);
+	SPI_WriteData(0x11);
+	SPI_WriteData(0x0C);
+	SPI_WriteData(0x10);
+	SPI_WriteData(0x05);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x08);
+	SPI_WriteData(0x08);
+	SPI_WriteData(0x1F);
+	SPI_WriteData(0x07);
+	SPI_WriteData(0x13);
+	SPI_WriteData(0x10);
+	SPI_WriteData(0xA9);
+	SPI_WriteData(0x30);
+	SPI_WriteData(0x18);
+	SPI_WriteComm(0xB1);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x0B);
+	SPI_WriteData(0x11);
+	SPI_WriteData(0x0D);
+	SPI_WriteData(0x0F);
+	SPI_WriteData(0x05);
+	SPI_WriteData(0x02);
+	SPI_WriteData(0x07);
+	SPI_WriteData(0x06);
+	SPI_WriteData(0x20);
+	SPI_WriteData(0x05);
+	SPI_WriteData(0x15);
+	SPI_WriteData(0x13);
+	SPI_WriteData(0xA9);
+	SPI_WriteData(0x30);
+	SPI_WriteData(0x18);
+	SPI_WriteComm(0xFF);
+	SPI_WriteData(0x77);
+	SPI_WriteData(0x01);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x11);
+	
+	
+	SPI_WriteComm(0xB0);
+	SPI_WriteData(0x53);
+	SPI_WriteComm(0xB1);
+	SPI_WriteData(0x60);
+	
+	SPI_WriteComm(0xB2);
+	SPI_WriteData(0x07);
+	
+	SPI_WriteComm(0xB3);
+	SPI_WriteData(0x80);
+	
+	SPI_WriteComm(0xB5);
+	SPI_WriteData(0x49);
+	
+	SPI_WriteComm(0xB7);
+	SPI_WriteData(0x85);
+	
+	SPI_WriteComm(0xB8);
+	SPI_WriteData(0x21);
+	
+	SPI_WriteComm(0xC1);
+	SPI_WriteData(0x78);
+	
+	SPI_WriteComm(0xC2);
+	SPI_WriteData(0x78);
+	 delay_ms(100);
+	
+	SPI_WriteComm(0xE0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x02);
+	
+	SPI_WriteComm(0xE1);
+	SPI_WriteData(0x03);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x02);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x33);
+	SPI_WriteData(0x33);
+	SPI_WriteComm(0xE2);
+	SPI_WriteData(0x22);
+	SPI_WriteData(0x22);
+	SPI_WriteData(0x33);
+	SPI_WriteData(0x33);
+	SPI_WriteData(0x88);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x87);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	
+	
+	SPI_WriteComm(0xE3);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x22);
+	SPI_WriteData(0x22);
+	
+	SPI_WriteComm(0xE4);
+	SPI_WriteData(0x44);
+	SPI_WriteData(0x44);
+	
+	SPI_WriteComm(0xE5);
+	SPI_WriteData(0x04);
+	SPI_WriteData(0x84);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x06);
+	SPI_WriteData(0x86);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x08);
+	SPI_WriteData(0x88);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x0A);
+	SPI_WriteData(0x8A);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	
+	SPI_WriteComm(0xE6);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x22);
+	SPI_WriteData(0x22);
+	
+	SPI_WriteComm(0xE7);
+	SPI_WriteData(0x44);
+	SPI_WriteData(0x44);
+	
+	SPI_WriteComm(0xE8);
+	SPI_WriteData(0x03);
+	SPI_WriteData(0x83);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x05);
+	SPI_WriteData(0x85);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x07);
+	SPI_WriteData(0x87);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0x09);
+	SPI_WriteData(0x89);
+	SPI_WriteData(0xA0);
+	SPI_WriteData(0xA0);
+	
+	SPI_WriteComm(0xEB);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x01);
+	SPI_WriteData(0xE4);
+	SPI_WriteData(0xE4);
+	SPI_WriteData(0x88);
+	SPI_WriteData(0x00);
+	SPI_WriteData(0x40);
+	
+	SPI_WriteComm(0xEC);
+	SPI_WriteData(0x3C);
+	SPI_WriteData(0x01);
+	
+	SPI_WriteComm(0xED);
+	SPI_WriteData(0xAB);
+	SPI_WriteData(0x89);
+	SPI_WriteData(0x76);
+	SPI_WriteData(0x54);
+	SPI_WriteData(0x02);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0xFF);
+	SPI_WriteData(0x20);
+	SPI_WriteData(0x45);
+	SPI_WriteData(0x67);
+	SPI_WriteData(0x98);
+	SPI_WriteData(0xBA);	 
+
+	
+	SPI_WriteComm(0x3A);
+	SPI_WriteData(0x55);
+
+	SPI_WriteComm(0x36);
+	SPI_WriteData(0x00);
+	
+
+    SPI_WriteComm(0x11);SPI_WriteData(0x00);                 // Sleep-Out
+
+	delay_ms(100);
+	SPI_WriteComm(0x29); 
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
 void LCD_Init(void)
 {
   /* Reset the LCD --------------------------------------------------------*/
   LCD_NRSTConfig();
   lcdReset();
-
+  ST7701S_Initial();
   /* Configure the LCD Control pins */
   LCD_AF_GPIOConfig();
 

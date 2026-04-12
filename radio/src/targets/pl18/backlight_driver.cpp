@@ -42,20 +42,19 @@ void backlightInit()
 
   stm32_timer_enable_clock(BACKLIGHT_TIMER);
   BACKLIGHT_TIMER->ARR = 100;
-  BACKLIGHT_TIMER->PSC = BACKLIGHT_TIMER_FREQ / 1000000 - 1; // 10kHz (same as FrOS)
-  BACKLIGHT_TIMER->CCMR1 = TIM_CCMR1_OC1M_1 | TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1PE; // PWM mode 1
-  BACKLIGHT_TIMER->CCER = TIM_CCER_CC1E | TIM_CCER_CC1NE;
-  BACKLIGHT_TIMER->CCR1 = 0;
-  BACKLIGHT_TIMER->EGR = TIM_EGR_UG;
+  BACKLIGHT_TIMER->PSC = BACKLIGHT_TIMER_FREQ / 10000 - 1; // 10kHz (same as FrOS)
+  BACKLIGHT_TIMER->CCMR1 = TIM_CCMR1_OC2M_1 | TIM_CCMR1_OC2M_2 ; // PWM mode 1
+  BACKLIGHT_TIMER->CCER = TIM_CCER_CC2E ;
+  BACKLIGHT_TIMER->CCR2 = 100;
+  BACKLIGHT_TIMER->EGR = 0;
   BACKLIGHT_TIMER->CR1 |= TIM_CR1_CEN; // Counter enable
-  BACKLIGHT_TIMER->BDTR |= TIM_BDTR_MOE;
-}
+ }
 
 uint8_t lastDutyCycle = 0;
 
 void backlightEnable(uint8_t dutyCycle)
 {
-  BACKLIGHT_TIMER->CCR1 = dutyCycle;
+  BACKLIGHT_TIMER->CCR2 = dutyCycle;
   if(!dutyCycle) {
     //experimental to turn off LCD when no backlight
     if(lcdOffFunction) lcdOffFunction();
