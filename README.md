@@ -24,9 +24,14 @@ RGB液晶接口-- FPC 40PIN 0.5mm间距，需要外接通用40PIN转接板来驱
 
 
 
-固件文件        
-https://github.com/Steam2024/STM429BIT6-EdgeTx/blob/main/firmware-360x640.bin        
-https://github.com/Steam2024/STM429BIT6-EdgeTx/blob/main/firmware-480x272.bin
 
+
+### 💾 本地固件
+
+[下载 360x640屏幕 固件 (firmware.bin)](https://github.com/Steam2024/STM429BIT6-EdgeTx/raw/main/firmware-360x640.bin)        
+
+[下载 480x272屏幕 固件 (firmware.bin)](https://github.com/Steam2024/STM429BIT6-EdgeTx/raw/main/firmware-480x272.bin)
+
+        
 
         
