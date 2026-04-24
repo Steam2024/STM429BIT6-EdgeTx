@@ -19,5 +19,10 @@ RGB液晶接口-- FPC 40PIN 0.5mm间距，需要外接通用40PIN转接板来驱
 4.电压检测使用1：5电子积木模块
 
 
+开发板GPIO 连接
+<img width="1707" height="1038" alt="Screenshot 2026-04-24 205219" src="https://github.com/user-attachments/assets/ef7a4040-1c40-40c8-8f9e-4f219aff7731" />
+
+
+
 固件文件        
 https://github.com/Steam2024/STM429BIT6-EdgeTx/blob/main/firmware-360x640.bin
